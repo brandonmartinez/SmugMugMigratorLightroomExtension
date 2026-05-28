@@ -30,10 +30,12 @@ local ArchiveTarget      = require "ArchiveTarget"
 local Migrator           = require "Migrator"
 
 -- Step 1: mode selection (no catalog calls)
-local mode = ModeDialog.choose()
-if not mode then
+local choice = ModeDialog.choose()
+if not choice then
     return  -- user cancelled
 end
+local mode = choice.mode
+local rootName = choice.rootName or "_archive"
 
 -- Step 2: async task
 LrTasks.startAsyncTask(function()
@@ -56,8 +58,8 @@ LrTasks.startAsyncTask(function()
             logger = Logger.new()
             local pluginInfo = require "Info"
             local v = pluginInfo.VERSION or {}
-            logger:info("Plugin start, mode=%s, version=%d.%d.%d.%d",
-                mode, v.major or 0, v.minor or 0, v.revision or 0, v.build or 0)
+            logger:info("Plugin start, mode=%s, version=%d.%d.%d.%d, rootSet=%q",
+                mode, v.major or 0, v.minor or 0, v.revision or 0, v.build or 0, rootName)
 
             local catalog = LrApplication.activeCatalog()
 
@@ -82,7 +84,7 @@ LrTasks.startAsyncTask(function()
             local walked = SmugMugDiscovery.walk(service)
             logger:info("Discovered %d album(s) in tree.", #walked.allAlbums)
 
-            local plan, warnings = Planner.plan(walked, { archiveSetName = ArchiveTarget.NAME })
+            local plan, warnings = Planner.plan(walked, { archiveSetName = rootName })
             for _, w in ipairs(warnings) do
                 logger:warn("[%s] %s", w.kind, w.message)
             end
@@ -97,11 +99,11 @@ LrTasks.startAsyncTask(function()
             -- before we start showing progress bars.
             if mode ~= "dryRun" then
                 local _, archInfo = ArchiveTarget.findOrCreate(catalog,
-                    { logger = logger, dryRun = true })
+                    { logger = logger, dryRun = true, name = rootName })
                 if archInfo.conflict then
                     LrDialogs.message("SmugMug Migrator",
                         string.format("A top-level COLLECTION named %q already exists in this catalog. " ..
-                            "Rename or remove it and rerun.", ArchiveTarget.NAME), "critical")
+                            "Rename or remove it and rerun.", rootName), "critical")
                     fatalErr = "archive-conflict"
                     return
                 end

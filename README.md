@@ -2,9 +2,10 @@
 
 A Lightroom Classic SDK plugin that walks the official SmugMug publish
 service in your catalog and creates matching built-in collection sets and
-collections under a `_archive` root. Once it has finished and you've
-verified the result, you can safely remove the SmugMug plugin — your
-albums (and their photos) now live in regular Lightroom collections.
+collections under a configurable root (default `_archive`). Once it has
+finished and you've verified the result, you can safely remove the SmugMug
+plugin — your albums (and their photos) now live in regular Lightroom
+collections.
 
 The plugin **only modifies Lightroom collections inside your catalog**. It
 never touches photo files on disk, never re-uploads anything, and never
@@ -85,6 +86,10 @@ Logs are written under:
    show as enabled with no errors.
 5. Switch to the **Library** module.
 6. **Library → Plug-in Extras → Migrate SmugMug to Collections…**
+7. In the mode dialog, optionally change the **Root collection set name**
+   from the default `_archive` to match an existing top-level set in your
+   catalog (e.g. `_archived`). If the named set already exists, it is
+   reused; otherwise it will be created on the first non-dry-run.
 
 ---
 

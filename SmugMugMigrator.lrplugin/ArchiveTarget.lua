@@ -7,7 +7,7 @@
 
 local M = {}
 
-local ARCHIVE_NAME = "_archive"
+local DEFAULT_NAME = "_archive"
 
 local function eqi(a, b) return string.lower(a or "") == string.lower(b or "") end
 
@@ -28,44 +28,45 @@ local function findTopLevelCollectionConflict(catalog, name)
     return nil
 end
 
---- Find or create the _archive collection set at the root of the catalog.
+--- Find or create the archive root collection set at the root of the catalog.
 -- Performs a single short writeAccessDo only when creation is necessary.
 -- @param catalog LrCatalog
--- @param opts table optional { dryRun = boolean, logger }
+-- @param opts table optional { dryRun = boolean, logger, name = string }
 -- @return setOrNil, info { existed, created, conflict, name }
 function M.findOrCreate(catalog, opts)
     opts = opts or {}
     local logger = opts.logger
+    local name = opts.name or DEFAULT_NAME
 
-    local existing = findTopLevelSet(catalog, ARCHIVE_NAME)
+    local existing = findTopLevelSet(catalog, name)
     if existing then
-        if logger then logger:info("Archive root set %q already exists.", ARCHIVE_NAME) end
-        return existing, { existed = true, created = false, conflict = false, name = ARCHIVE_NAME }
+        if logger then logger:info("Archive root set %q already exists.", name) end
+        return existing, { existed = true, created = false, conflict = false, name = name }
     end
 
-    local conflict = findTopLevelCollectionConflict(catalog, ARCHIVE_NAME)
+    local conflict = findTopLevelCollectionConflict(catalog, name)
     if conflict then
         if logger then
             logger:error("Cannot create %q: a top-level COLLECTION with that name already exists.",
-                ARCHIVE_NAME)
+                name)
         end
-        return nil, { existed = false, created = false, conflict = true, name = ARCHIVE_NAME }
+        return nil, { existed = false, created = false, conflict = true, name = name }
     end
 
     if opts.dryRun then
-        if logger then logger:info("[dry-run] Would create root collection set %q.", ARCHIVE_NAME) end
-        return nil, { existed = false, created = false, conflict = false, name = ARCHIVE_NAME, dryRun = true }
+        if logger then logger:info("[dry-run] Would create root collection set %q.", name) end
+        return nil, { existed = false, created = false, conflict = false, name = name, dryRun = true }
     end
 
     local createdSet
-    catalog:withWriteAccessDo("Create _archive root", function()
-        createdSet = catalog:createCollectionSet(ARCHIVE_NAME, nil, true)
+    catalog:withWriteAccessDo("Create " .. name .. " root", function()
+        createdSet = catalog:createCollectionSet(name, nil, false)
     end)
-    if logger then logger:info("Created root collection set %q.", ARCHIVE_NAME) end
-    return createdSet, { existed = false, created = true, conflict = false, name = ARCHIVE_NAME }
+    if logger then logger:info("Created root collection set %q.", name) end
+    return createdSet, { existed = false, created = true, conflict = false, name = name }
 end
 
-M.NAME = ARCHIVE_NAME
+M.NAME = DEFAULT_NAME
 
 return M
 

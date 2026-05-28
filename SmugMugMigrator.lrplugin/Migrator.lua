@@ -125,14 +125,20 @@ local function ensureSetCreated(catalog, path, logger, dryRun, stats)
                 end
             end
 
-            local createOk, createErr = LrTasks.pcall(function()
-                catalog:withWriteAccessDo("Create collection set " .. segment, function()
-                    catalog:createCollectionSet(segment, parentForCreate, true)
-                end)
+            -- Drop the inner LrTasks.pcall: it adds no error-handling
+            -- value because the outer LrTasks.pcall at the caller will
+            -- catch any thrown error. Nested LrTasks.pcall around
+            -- withWriteAccessDo has been observed to interact badly
+            -- with SDK assertions; the akrabat reference plugin pattern
+            -- uses no inner pcall here.
+            --
+            -- canReturnExisting is `false` because resolveSet() above
+            -- has already verified there is no set at this name; using
+            -- `true` with parent=nil at top-level can trigger an opaque
+            -- "assertion failed!" inside the SDK on some catalogs.
+            catalog:withWriteAccessDo("Create collection set " .. segment, function()
+                catalog:createCollectionSet(segment, parentForCreate, false)
             end)
-            if not createOk then
-                return nil, string.format("Failed to create set %q: %s", joinPath(prefix), tostring(createErr))
-            end
 
             stats.setsCreated = stats.setsCreated + 1
             logger:info("Created collection set %q", joinPath(prefix))

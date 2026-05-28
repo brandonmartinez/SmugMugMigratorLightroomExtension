@@ -1,7 +1,9 @@
 --[[
-    ModeDialog.lua — initial dialog that lets the user pick the run mode.
+    ModeDialog.lua — initial dialog that lets the user pick the run mode
+    and the root collection set name.
 
-    Returns one of "dryRun" | "batch" | "guided" | nil (cancel).
+    Returns { mode = "dryRun" | "batch" | "guided", rootName = string }
+    on confirm, or nil if the user cancelled.
 
     Safe to call from inside an LrTasks task. Touches no catalog APIs.
 --]]
@@ -18,6 +20,7 @@ function M.choose()
         local f = LrView.osFactory()
         local props = LrBinding.makePropertyTable(context)
         props.mode = "dryRun"
+        props.rootName = "_archive"
 
         local contents = f:column {
             bind_to_object = props,
@@ -41,6 +44,20 @@ function M.choose()
                 value = LrView.bind("mode"),
                 checked_value = "guided",
             },
+            f:separator { fill_horizontal = 1 },
+            f:row {
+                f:static_text { title = "Root collection set name:", width = 200 },
+                f:edit_field {
+                    value = LrView.bind("rootName"),
+                    width_in_chars = 24,
+                    immediate = true,
+                },
+            },
+            f:static_text {
+                title = "All migrated content is placed under this top-level set.\nIf it already exists, it will be reused; otherwise it will be created.",
+                height_in_lines = 2,
+                text_color = import("LrColor")(0.4, 0.4, 0.4),
+            },
         }
 
         local result = LrDialogs.presentModalDialog {
@@ -48,7 +65,12 @@ function M.choose()
             contents = contents,
             actionVerb = "Continue",
         }
-        if result == "ok" then return props.mode end
+        if result == "ok" then
+            local rootName = props.rootName or ""
+            rootName = rootName:gsub("^%s+", ""):gsub("%s+$", "")
+            if rootName == "" then rootName = "_archive" end
+            return { mode = props.mode, rootName = rootName }
+        end
         return nil
     end)
 end
