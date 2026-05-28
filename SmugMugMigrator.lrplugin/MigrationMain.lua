@@ -5,9 +5,12 @@
 
       1. Show mode-selection dialog (outside the async task — no catalog
          calls there).
-      2. Spawn the async task; everything below runs guarded by xpcall
-         with finally-style cleanup so the logger is always closed and
-         the progress scope always ends.
+      2. Spawn the async task; everything below runs guarded by
+         LrTasks.pcall (a coroutine-safe pcall — standard Lua pcall
+         cannot wrap SDK calls that yield, e.g. catalog:withWriteAccessDo,
+         and will raise "Yielding is not allowed within a C or metamethod
+         call") with finally-style cleanup so the logger is always closed
+         and the progress scope always ends.
 --]]
 
 local LrApplication     = import "LrApplication"
@@ -49,7 +52,7 @@ LrTasks.startAsyncTask(function()
             end
         end
 
-        local ok, err = pcall(function()
+        local ok, err = LrTasks.pcall(function()
             logger = Logger.new()
             logger:info("Plugin start, mode=%s", mode)
 

@@ -27,10 +27,18 @@
       * Each album's collection is created + populated in ONE per-album
         writeAccessDo with a TOCTOU re-check inside the gate.
       * Photo-resolution from publishedPhoto:getPhoto() happens BEFORE the
-        write gate, wrapped in pcall.
+        write gate, wrapped in LrTasks.pcall (coroutine-safe).
       * Photos are de-duped by handle identity before addPhotos.
       * Dry-run does no SDK mutations; it logs what would happen.
+
+    NOTE on pcall: All `pcall` wrappers around SDK calls in this file use
+    `LrTasks.pcall` instead of Lua's standard `pcall`. Standard `pcall`
+    cannot wrap any function that yields the coroutine — including most
+    of the catalog mutation API (withWriteAccessDo, etc.) — and will
+    raise "Yielding is not allowed within a C or metamethod call".
 --]]
+
+local LrTasks = import "LrTasks"
 
 local Migrator = {}
 
@@ -106,7 +114,7 @@ local function ensureSetCreated(catalog, path, logger, dryRun, stats)
                 end
             end
 
-            local createOk, createErr = pcall(function()
+            local createOk, createErr = LrTasks.pcall(function()
                 catalog:withWriteAccessDo("Create collection set " .. segment, function()
                     catalog:createCollectionSet(segment, parent, true)
                 end)
@@ -130,7 +138,7 @@ local function resolvePhotos(publishedColl, logger)
     local failed = 0
     local published = publishedColl:getPublishedPhotos() or {}
     for _, pp in ipairs(published) do
-        local ok, photo = pcall(function() return pp:getPhoto() end)
+        local ok, photo = LrTasks.pcall(function() return pp:getPhoto() end)
         if ok and photo then
             table.insert(photos, photo)
         else
@@ -243,7 +251,7 @@ local function processAlbum(catalog, entry, opts, stats)
     end
 
     -- Ensure ancestor set is in place.
-    local okEnsure, parentOrNil, ensureErr = pcall(ensureSetCreated, catalog, plan.target.parentPath, logger, false, stats)
+    local okEnsure, parentOrNil, ensureErr = LrTasks.pcall(ensureSetCreated, catalog, plan.target.parentPath, logger, false, stats)
     if not okEnsure then
         logger:error("Failed to ensure parent set for %s: %s", targetLabel, tostring(parentOrNil))
         stats.albumErrors = stats.albumErrors + 1
@@ -267,7 +275,7 @@ local function processAlbum(catalog, entry, opts, stats)
     -- to a collection that was created by something else between
     -- preflight and execution.
     local createdNew = false
-    local ok, err = pcall(function()
+    local ok, err = LrTasks.pcall(function()
         catalog:withWriteAccessDo("Create collection " .. plan.target.name, function()
             -- Re-check for an existing collection with this name
             for _, coll in ipairs(parent:getChildCollections() or {}) do
