@@ -106,6 +106,14 @@ local function ensureSetCreated(catalog, path, logger, dryRun, stats)
 
             local segment = path[depth]
 
+            -- For createCollectionSet, the parent argument must be an
+            -- LrCollectionSet or nil for a top-level set. LrCatalog itself
+            -- is NOT a valid parent — passing it raises an opaque
+            -- "assertion failed!". We still keep `parent = catalog` for
+            -- the read-side collision check below (catalog responds to
+            -- getChildCollections/getChildCollectionSets just like a set).
+            local parentForCreate = (#parentPath == 0) and nil or parent
+
             -- Collision detection: same-name child collection?
             for _, coll in ipairs(parent:getChildCollections() or {}) do
                 if coll:getName() == segment
@@ -119,7 +127,7 @@ local function ensureSetCreated(catalog, path, logger, dryRun, stats)
 
             local createOk, createErr = LrTasks.pcall(function()
                 catalog:withWriteAccessDo("Create collection set " .. segment, function()
-                    catalog:createCollectionSet(segment, parent, true)
+                    catalog:createCollectionSet(segment, parentForCreate, true)
                 end)
             end)
             if not createOk then
