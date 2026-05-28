@@ -54,7 +54,10 @@ LrTasks.startAsyncTask(function()
 
         local ok, err = LrTasks.pcall(function()
             logger = Logger.new()
-            logger:info("Plugin start, mode=%s", mode)
+            local pluginInfo = require "Info"
+            local v = pluginInfo.VERSION or {}
+            logger:info("Plugin start, mode=%s, version=%d.%d.%d.%d",
+                mode, v.major or 0, v.minor or 0, v.revision or 0, v.build or 0)
 
             local catalog = LrApplication.activeCatalog()
 
