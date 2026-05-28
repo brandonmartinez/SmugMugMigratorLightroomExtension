@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Lua
+*.luac
+
+# Logs / scratch
+*.log
+tmp/
+scratch/
+
+# Lightroom catalog backups / previews (just in case)
+*.lrcat
+*.lrcat-journal
+*.lrdata/
+Backups/
+
