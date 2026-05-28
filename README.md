@@ -129,6 +129,7 @@ The summary dialog (and the log) tracks:
 | Collection set collisions                       | A required set's name was occupied by a collection. |
 | Collections created                             | New album collections this run created.        |
 | Collections skipped (already existed)           | Album collections that were already there.     |
+| Empty galleries skipped                         | Source galleries with zero resolved photos — auto-skipped in all modes (no collection created, not prompted in guided). |
 | Collection collisions                           | Album target name occupied by a set, or ancestor blocked. |
 | Collection duplicate-target conflicts           | Multiple source galleries mapped to the same target path (must be resolved upstream). |
 | Photos added to collections                     | Total LrPhoto additions across all created collections. |

@@ -15,7 +15,7 @@
       {
         setsCreated, setsExisting, setCollisions,
         collectionsCreated, collectionsSkipped, collectionCollisions,
-        collectionDuplicates,
+        collectionDuplicates, emptyGalleriesSkipped,
         photosAdded, photosFailed, albumErrors,
         aborted,
       }
@@ -29,6 +29,9 @@
       * Photo-resolution from publishedPhoto:getPhoto() happens BEFORE the
         write gate, wrapped in LrTasks.pcall (coroutine-safe).
       * Photos are de-duped by handle identity before addPhotos.
+      * Source galleries with zero resolved photos are skipped entirely
+        (no collection created, no guided prompt) — logged + counted in
+        emptyGalleriesSkipped. Same behaviour in dry-run, batch, guided.
       * Dry-run does no SDK mutations; it logs what would happen.
 
     NOTE on pcall: All `pcall` wrappers around SDK calls in this file use
@@ -223,6 +226,25 @@ local function processAlbum(catalog, entry, opts, stats)
 
     stats.photosFailed = stats.photosFailed + failedPhotos
 
+    -- Skip empty source galleries entirely — no collection created, no
+    -- guided prompt. Truly-empty galleries and galleries whose photos
+    -- all failed to resolve are both treated as "nothing to create" but
+    -- logged differently so the user can investigate the latter.
+    if photoCount == 0 then
+        if dryRun then
+            logger:info("[dry-run] SKIP empty gallery: %s (would have created %s)",
+                sourceLabel, targetLabel)
+        elseif failedPhotos > 0 then
+            logger:warn("SKIP empty result: %s (all %d published photo(s) failed to resolve; target was %s)",
+                sourceLabel, failedPhotos, targetLabel)
+        else
+            logger:info("SKIP empty gallery: %s (0 photos in SmugMug; target was %s)",
+                sourceLabel, targetLabel)
+        end
+        stats.emptyGalleriesSkipped = stats.emptyGalleriesSkipped + 1
+        return
+    end
+
     -- Guided mode: ask the user.
     if mode == "guided" and opts.guidedFn then
         local decision = opts.guidedFn(plan, {
@@ -340,6 +362,7 @@ function Migrator.run(catalog, preflight, opts)
         collectionsSkipped  = 0,
         collectionCollisions = 0,
         collectionDuplicates = 0,
+        emptyGalleriesSkipped = 0,
         photosAdded         = 0,
         photosFailed        = 0,
         albumErrors         = 0,
@@ -399,8 +422,9 @@ function Migrator.run(catalog, preflight, opts)
 
     if opts.progress then opts.progress:setPortionComplete(total, total) end
 
-    logger:info("Migration run finished: setsCreated=%d collectionsCreated=%d collectionsSkipped=%d photosAdded=%d photosFailed=%d errors=%d aborted=%s",
+    logger:info("Migration run finished: setsCreated=%d collectionsCreated=%d collectionsSkipped=%d emptyGalleriesSkipped=%d photosAdded=%d photosFailed=%d errors=%d aborted=%s",
         stats.setsCreated, stats.collectionsCreated, stats.collectionsSkipped,
+        stats.emptyGalleriesSkipped,
         stats.photosAdded, stats.photosFailed, stats.albumErrors, tostring(stats.aborted))
 
     return stats

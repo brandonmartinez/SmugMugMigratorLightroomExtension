@@ -47,6 +47,7 @@ function M.show(stats, preflightSummary, logPath, mode)
 
         table.insert(rows, row(f, "Collections created",                     stats.collectionsCreated))
         table.insert(rows, row(f, "Collections skipped (already existed)",   stats.collectionsSkipped))
+        table.insert(rows, row(f, "Empty galleries skipped",                 stats.emptyGalleriesSkipped or 0))
         table.insert(rows, row(f, "Collection collisions (wrong kind/etc)",  stats.collectionCollisions))
         table.insert(rows, row(f, "Collection duplicate-target conflicts",   stats.collectionDuplicates))
         table.insert(rows, f:spacer { height = 6 })
